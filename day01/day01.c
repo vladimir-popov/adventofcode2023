@@ -28,14 +28,14 @@ main (int argc, char *argv[])
   if (argc != 2)
     {
       printf ("You have to specify a file name as the single argument");
-      goto cleanup;
+      return EXIT_FAILURE;
     }
 
   FILE *fptr = fopen (argv[1], "r");
   if (!fptr)
     {
       printf ("No able to open file %s", argv[1]);
-      goto cleanup;
+      return EXIT_FAILURE;
     }
 
   int c;

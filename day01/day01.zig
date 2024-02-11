@@ -9,10 +9,13 @@ pub fn main() !void {
     const file = try std.fs.cwd().openFile(file_name, .{ .mode = .read_only });
     defer file.close();
 
+    var buffered = std.io.bufferedReader(file.reader());
+    var reader = buffered.reader();
+
     var sum: u32 = 0;
     var ns = [_]u8{ 0, 0 };
     var i: u8 = 0;
-    while (file.reader().readByte()) |c| {
+    while (reader.readByte()) |c| {
         if (std.ascii.isDigit(c)) {
             ns[i] = c;
             i = 1;
