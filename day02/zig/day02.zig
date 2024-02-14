@@ -74,6 +74,16 @@ const Game = struct {
         return true;
     }
 
+    fn fewestNumbers(self: Game) Set {
+        var result: Set = Set{ .red = 0, .green = 0, .blue = 0 };
+        for (self.sets.items) |set| {
+            result.red = @max(result.red, set.red);
+            result.green = @max(result.green, set.green);
+            result.blue = @max(result.blue, set.blue);
+        }
+        return result;
+    }
+
     fn read(game: *Game, comptime ScannerType: type, scanner: ScannerType) !bool {
         var set: *Set = undefined;
         var number: u8 = undefined;
@@ -135,7 +145,6 @@ fn solvePart1(scanner: anytype) !u32 {
     var game = Game.init(allocator);
     defer game.deinit();
     while (try game.read(@TypeOf(scanner), scanner)) : (game.reset()) {
-        game.print();
         if (!game.is_possible())
             continue;
         result += game.id;
@@ -157,6 +166,35 @@ test "Part 1. Input data" {
     try std.testing.expectEqual(2486, try solvePart1(&scanner));
 }
 
+fn solvePart2(scanner: anytype) !u32 {
+    var gpa: std.heap.GeneralPurposeAllocator(.{}) = .{};
+    defer std.debug.assert(gpa.deinit() == .ok);
+    const allocator = gpa.allocator();
+
+    var result: u32 = 0;
+    var game = Game.init(allocator);
+    defer game.deinit();
+    while (try game.read(@TypeOf(scanner), scanner)) : (game.reset()) {
+        const numbers = game.fewestNumbers();
+        result += @as(u32, numbers.red) * numbers.green * numbers.blue;
+    }
+    return result;
+}
+
+test "Part 2. Test data" {
+    const file = try std.fs.cwd().openFile("test.txt", .{});
+    defer file.close();
+    var scanner = ex.scanFile(file, .{});
+    try std.testing.expectEqual(2286, try solvePart2(&scanner));
+}
+
+test "Part 2. Input data" {
+    const file = try std.fs.cwd().openFile("input.txt", .{});
+    defer file.close();
+    var scanner = ex.scanFile(file, .{});
+    try std.testing.expectEqual(87984, try solvePart2(&scanner));
+}
+
 pub fn main() !void {
     if (std.os.argv.len != 2) {
         std.debug.print("You have to pass the file name as the single argument", .{});
@@ -167,6 +205,6 @@ pub fn main() !void {
     defer file.close();
 
     var scanner = ex.scanFile(file, .{});
-    const result = try solvePart1(&scanner);
+    const result = try solvePart2(&scanner);
     std.debug.print("The result is {any}", .{result});
 }
