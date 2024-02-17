@@ -19,6 +19,15 @@
 /// In this schematic, two numbers are not part numbers because they are not adjacent to a symbol:
 /// 114 (top right) and 58 (middle right). Every other number is adjacent to a symbol and so is
 /// a part number; their sum is 4361.
+/// ----- Part II ------
+/// A gear is any * symbol that is adjacent to exactly two part numbers. Its gear ratio is the
+/// result of multiplying those two numbers together.
+/// This time, you need to find the gear ratio of every gear and add them all up so that the engineer
+/// can figure out which gear needs to be replaced.
+/// In the schematic above, there are two gears. The first is in the top left; it has part numbers
+/// 467 and 35, so its gear ratio is 16345. The second gear is in the lower right; its gear ratio is
+/// 451490. (The * adjacent to 617 is not a gear because it is only adjacent to one part number.)
+/// Adding up all of the gear ratios produces 467835.
 const std = @import("std");
 
 const TokenType = enum { number, symbol };
@@ -68,6 +77,186 @@ fn parseTokens(line: []const u8, tokens: *std.ArrayList(Token)) !void {
     }
 }
 
+const RingBufferedTokens = struct {
+    const Self = @This();
+
+    const size = 3;
+
+    const neighbors = [_]i8{ -1, 0, 1 };
+
+    tokens: [size]std.ArrayList(Token),
+    handled_lines_count: u8 = 0,
+
+    fn init(allocator: std.mem.Allocator) RingBufferedTokens {
+        return RingBufferedTokens{ .tokens = .{ std.ArrayList(Token).init(allocator), std.ArrayList(Token).init(allocator), std.ArrayList(Token).init(allocator) } };
+    }
+
+    fn deinit(self: Self) void {
+        for (self.tokens) |tokens| {
+            tokens.deinit();
+        }
+    }
+
+    fn get(self: *Self, ln: u32) *std.ArrayList(Token) {
+        return &self.tokens[ln % size];
+    }
+
+    fn parseLine(self: *Self, line: []const u8) !void {
+        const tokens = self.get(self.handled_lines_count);
+        tokens.clearAndFree();
+        try parseTokens(line, tokens);
+        self.handled_lines_count += 1;
+    }
+
+    fn hasSymbolAroundInLine(self: *Self, token: Token, ln: u32) bool {
+        if (self.handled_lines_count < ln) return false;
+
+        for (self.get(ln).items) |tokenInLine| {
+            switch (tokenInLine.type) {
+                .number => continue,
+                else => {
+                    if (tokenInLine.start > token.end)
+                        return false;
+                    if (tokenInLine.end < token.start)
+                        continue;
+                    if (token.start <= tokenInLine.end or token.end >= tokenInLine.start)
+                        return true;
+                },
+            }
+        }
+        return false;
+    }
+
+    fn sumInLine(self: *Self, ln: u32) u32 {
+        var result: u32 = 0;
+        for (self.get(ln).items) |token| {
+            switch (token.type) {
+                .symbol => continue,
+                .number => {
+                    var has_symbols_around = false;
+                    for (neighbors) |j| {
+                        var ii: i32 = @intCast(ln);
+                        ii += j;
+                        if (ii < 0) continue;
+                        has_symbols_around = has_symbols_around or self.hasSymbolAroundInLine(token, @intCast(ii));
+                    }
+                    if (has_symbols_around) result += token.value;
+                },
+            }
+        }
+        return result;
+    }
+
+    fn findNumbersAroundInLine(self: *Self, token: Token, ln: u32, result: []u32) usize {
+        if (self.handled_lines_count < ln) return 0;
+        var count: usize = 0;
+        for (self.get(ln).items) |tokenInLine| {
+            switch (tokenInLine.type) {
+                .symbol => continue,
+                else => {
+                    if (tokenInLine.start > token.end)
+                        return count;
+                    if (tokenInLine.end < token.start)
+                        continue;
+                    if (token.start <= tokenInLine.end or token.end >= tokenInLine.start) {
+                        result[count] = tokenInLine.value;
+                        count += 1;
+                    }
+                },
+            }
+        }
+        return count;
+    }
+
+    fn sumGearsInLine(self: *Self, ln: u32) u32 {
+        var result: u32 = 0;
+        for (self.get(ln).items) |token| {
+            switch (token.type) {
+                .number => continue,
+                .symbol => {
+                    if (token.value != '*')
+                        continue;
+                    var numbers = [_]u32{0} ** 12;
+                    var count: usize = 0;
+                    for (neighbors) |j| {
+                        var ii: i32 = @intCast(ln);
+                        ii += j;
+                        if (ii < 0) continue;
+                        count += self.findNumbersAroundInLine(token, @intCast(ii), numbers[count..]);
+                    }
+                    if (count == 2) {
+                        result += numbers[0] * numbers[1];
+                    }
+                },
+            }
+        }
+        return result;
+    }
+
+    fn printTokens(self: *RingBufferedTokens, i: u8) void {
+        for (self.get(i)) |token| {
+            std.debug.print("{d}-{d}:{s} ", .{ token.start, token.end, token.value });
+        }
+    }
+};
+
+fn solvePart1(reader: std.io.AnyReader) !u32 {
+    var gpa: std.heap.GeneralPurposeAllocator(.{}) = .{};
+    defer std.debug.assert(gpa.deinit() == .ok);
+    const allocator = gpa.allocator();
+
+    var result: u32 = 0;
+    var chars_buffer: [256]u8 = undefined;
+    var tokens = RingBufferedTokens.init(allocator);
+    defer tokens.deinit();
+    while (try reader.readUntilDelimiterOrEof(&chars_buffer, '\n')) |line| {
+        try tokens.parseLine(line);
+        if (tokens.handled_lines_count == 1)
+            continue;
+        result += tokens.sumInLine(tokens.handled_lines_count - 2);
+    }
+    result += tokens.sumInLine(tokens.handled_lines_count - 1);
+
+    return result;
+}
+
+fn solvePart2(reader: std.io.AnyReader) !u32 {
+    var gpa: std.heap.GeneralPurposeAllocator(.{}) = .{};
+    defer std.debug.assert(gpa.deinit() == .ok);
+    const allocator = gpa.allocator();
+
+    var result: u32 = 0;
+    var chars_buffer: [256]u8 = undefined;
+    var tokens = RingBufferedTokens.init(allocator);
+    defer tokens.deinit();
+    while (try reader.readUntilDelimiterOrEof(&chars_buffer, '\n')) |line| {
+        try tokens.parseLine(line);
+        if (tokens.handled_lines_count == 1)
+            continue;
+        result += tokens.sumGearsInLine(tokens.handled_lines_count - 2);
+    }
+    result += tokens.sumGearsInLine(tokens.handled_lines_count - 1);
+
+    return result;
+}
+
+pub fn main() !void {
+    if (std.os.argv.len != 3) {
+        std.debug.print("You have to pass number of the part as the first argument, and the file name as the second argument", .{});
+        std.process.exit(1);
+    }
+    const solution_part = std.os.argv[1];
+    const file_name = std.mem.span(std.os.argv[2]);
+    const file = try std.fs.cwd().openFile(file_name, .{ .mode = .read_only });
+    defer file.close();
+
+    var buffered = std.io.bufferedReader(file.reader());
+    const reader = buffered.reader().any();
+    const result = if (solution_part[0] == '1') try solvePart1(reader) else try solvePart2(reader);
+
+    std.debug.print("The result is {any}", .{result});
+}
+
 test parseTokens {
     var gpa: std.heap.GeneralPurposeAllocator(.{}) = .{};
     defer std.debug.assert(gpa.deinit() == .ok);
@@ -112,96 +301,7 @@ test parseTokens {
     try std.testing.expectEqual(3, tokens.items.len);
 }
 
-const RingBufferedTokens = struct {
-    const Self = @This();
-
-    const size = 3;
-
-    tokens: [size]std.ArrayList(Token),
-    handled_lines_count: u8 = 0,
-
-    fn init(allocator: std.mem.Allocator) RingBufferedTokens {
-        return RingBufferedTokens{ .tokens = .{ std.ArrayList(Token).init(allocator), std.ArrayList(Token).init(allocator), std.ArrayList(Token).init(allocator) } };
-    }
-
-    fn deinit(self: Self) void {
-        for (self.tokens) |tokens| {
-            tokens.deinit();
-        }
-    }
-
-    fn get(self: *Self, i: u8) *std.ArrayList(Token) {
-        return &self.tokens[i % size];
-    }
-
-    fn parseLine(self: *Self, line: []const u8) !void {
-        const tokens = self.get(self.handled_lines_count);
-        tokens.clearAndFree();
-        try parseTokens(line, tokens);
-        self.handled_lines_count += 1;
-    }
-
-    fn hasSymbolAroundInLine(self: *Self, token: Token, i: u8) bool {
-        if (self.handled_lines_count < i) return false;
-
-        for (self.get(i).items) |tokenInLine| {
-            switch (tokenInLine.type) {
-                .number => continue,
-                else => {
-                    if (tokenInLine.start > token.end)
-                        return false;
-                    if (tokenInLine.end < token.start)
-                        continue;
-                    if (token.start <= tokenInLine.end or token.end >= tokenInLine.start)
-                        return true;
-                },
-            }
-        }
-        return false;
-    }
-
-    fn sumInLine(self: *Self, i: u8) u32 {
-        var result: u32 = 0;
-        for (self.get(i).items) |token| {
-            switch (token.type) {
-                .symbol => continue,
-                .number => {
-                    if (i > 0 and self.hasSymbolAroundInLine(token, i - 1) or self.hasSymbolAroundInLine(token, i) or self.hasSymbolAroundInLine(token, i + 1))
-                        result += token.value;
-                },
-            }
-        }
-        return result;
-    }
-
-    fn printTokens(self: *RingBufferedTokens, i: u8) void {
-        for (self.get(i)) |token| {
-            std.debug.print("{d}-{d}:{s} ", .{ token.start, token.end, token.value });
-        }
-    }
-};
-
-fn solve(reader: std.io.AnyReader) !u32 {
-    var gpa: std.heap.GeneralPurposeAllocator(.{}) = .{};
-    defer std.debug.assert(gpa.deinit() == .ok);
-    const allocator = gpa.allocator();
-
-    var result: u32 = 0;
-    var chars_buffer: [256]u8 = undefined;
-    var tokens = RingBufferedTokens.init(allocator);
-    defer tokens.deinit();
-    while (try reader.readUntilDelimiterOrEof(&chars_buffer, '\n')) |line| {
-        try tokens.parseLine(line);
-        if (tokens.handled_lines_count == 1)
-            continue;
-        result += tokens.sumInLine(tokens.handled_lines_count - 2);
-    }
-    result += tokens.sumInLine(tokens.handled_lines_count - 1);
-
-    return result;
-}
-
-test solve {
+test "solve part 1" {
     var gpa: std.heap.GeneralPurposeAllocator(.{}) = .{};
     defer std.debug.assert(gpa.deinit() == .ok);
     const allocator = gpa.allocator();
@@ -216,29 +316,23 @@ test solve {
     ;
     var buffered = std.io.fixedBufferStream(input);
     const reader = buffered.reader().any();
-    try std.testing.expectEqual(123 + 45 + 9, try solve(reader));
+    try std.testing.expectEqual(123 + 45 + 9, try solvePart1(reader));
 }
 
-test "solve test.txt" {
+test "solve part 1 test.txt" {
     const file = try std.fs.cwd().openFile("test.txt", .{ .mode = .read_only });
     defer file.close();
 
     var buffered = std.io.bufferedReader(file.reader());
     const reader = buffered.reader().any();
-    try std.testing.expectEqual(4361, solve(reader));
+    try std.testing.expectEqual(4361, solvePart1(reader));
 }
 
-pub fn main() !void {
-    if (std.os.argv.len != 2) {
-        std.debug.print("You have to pass the file name as the single argument", .{});
-        std.process.exit(1);
-    }
-    const file_name = std.mem.span(std.os.argv[1]);
-    const file = try std.fs.cwd().openFile(file_name, .{ .mode = .read_only });
+test "solve part 2 test.txt" {
+    const file = try std.fs.cwd().openFile("test.txt", .{ .mode = .read_only });
     defer file.close();
 
     var buffered = std.io.bufferedReader(file.reader());
     const reader = buffered.reader().any();
-
-    std.debug.print("The result is {any}", .{try solve(reader)});
+    try std.testing.expectEqual(467835, solvePart2(reader));
 }
