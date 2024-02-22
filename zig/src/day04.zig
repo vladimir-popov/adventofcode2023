@@ -28,7 +28,71 @@ const std = @import("std");
 ///
 /// So, in this example, the Elf's pile of scratchcards is worth 13 points.
 pub fn solve(file: std.fs.File, part: u8) !u32 {
-    _ = file;
     _ = part;
-    return 0;
+    var br = std.io.bufferedReader(file.reader());
+    return solution1(br.reader().any());
+}
+
+test solution1 {
+    const data =
+        \\ Card 1: 41 48 83 86 17 | 83 86  6 31 17  9 48 53
+        \\ Card 2: 13 32 20 16 61 | 61 30 68 82 17 32 24 19
+        \\ Card 3:  1 21 53 59 44 | 69 82 63 72 16 21 14  1
+        \\ Card 4: 41 92 73 84 69 | 59 84 76 51 58  5 54 83
+        \\ Card 5: 87 83 26 28 32 | 88 30 70 12 93 22 82 36
+        \\ Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11
+    ;
+    var input = std.io.fixedBufferStream(data);
+    const actual = try solution1(input.reader().any());
+    try std.testing.expectEqual(13, actual);
+}
+
+test "part 1: test.txt" {
+    const file = try std.fs.cwd().openFile("../data/day04/test.txt", .{ .mode = .read_only });
+    defer file.close();
+    const actual = solve(file, 1);
+    try std.testing.expectEqual(13, actual);
+}
+
+fn solution1(reader: std.io.AnyReader) !u32 {
+    var buffer: [1024]u8 = undefined;
+    var result: u32 = 0;
+    while (try reader.readUntilDelimiterOrEof(&buffer, '\n')) |line| {
+        if (line.len == 0) continue;
+
+        var tokenizer = std.mem.tokenizeAny(u8, line, ":|");
+        _ = tokenizer.next();
+        const winners = tokenizer.next() orelse {
+            std.debug.print("Winners were not found in\n{s}\n", .{line});
+            unreachable;
+        };
+        const numbers = tokenizer.next() orelse {
+            std.debug.print("Numbers were not found in\n{s}\n", .{line});
+            unreachable;
+        };
+        result += try calculate(winners, numbers);
+    }
+    return result;
+}
+
+fn calculate(winners: []const u8, numbers: []const u8) !u32 {
+    var buffer: [1024]u8 = undefined;
+    var bufferedAlloc = std.heap.FixedBufferAllocator.init(&buffer);
+    const alloc = bufferedAlloc.allocator();
+
+    var winnersSet = std.BufSet.init(alloc);
+    defer winnersSet.deinit();
+    var iterator = std.mem.tokenizeScalar(u8, winners, ' ');
+    while (iterator.next()) |number| {
+        try winnersSet.insert(number);
+    }
+
+    iterator = std.mem.tokenizeScalar(u8, numbers, ' ');
+    var result: u32 = 0;
+    while (iterator.next()) |number| {
+        if (winnersSet.contains(number)) {
+            result = if (result == 0) 1 else result * 2;
+        }
+    }
+    return result;
 }
