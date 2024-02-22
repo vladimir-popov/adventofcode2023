@@ -1,3 +1,5 @@
+const std = @import("std");
+
 /// The engine schematic (your puzzle input) consists of a visual representation of the engine.
 /// There are lots of numbers and symbols you don't really understand, but apparently any number
 /// adjacent to a symbol, even diagonally, is a "part number" and should be included in your sum.
@@ -28,7 +30,11 @@
 /// 467 and 35, so its gear ratio is 16345. The second gear is in the lower right; its gear ratio is
 /// 451490. (The * adjacent to 617 is not a gear because it is only adjacent to one part number.)
 /// Adding up all of the gear ratios produces 467835.
-const std = @import("std");
+pub fn solve(file: std.fs.File, part: u8) !u32 {
+    var buffered = std.io.bufferedReader(file.reader());
+    const reader = buffered.reader().any();
+    return if (part == 1) try solvePart1(reader) else try solvePart2(reader);
+}
 
 const TokenType = enum { number, symbol };
 
@@ -240,23 +246,6 @@ fn solvePart2(reader: std.io.AnyReader) !u32 {
     return result;
 }
 
-pub fn main() !void {
-    if (std.os.argv.len != 3) {
-        std.debug.print("You have to pass number of the part as the first argument, and the file name as the second argument", .{});
-        std.process.exit(1);
-    }
-    const solution_part = std.os.argv[1];
-    const file_name = std.mem.span(std.os.argv[2]);
-    const file = try std.fs.cwd().openFile(file_name, .{ .mode = .read_only });
-    defer file.close();
-
-    var buffered = std.io.bufferedReader(file.reader());
-    const reader = buffered.reader().any();
-    const result = if (solution_part[0] == '1') try solvePart1(reader) else try solvePart2(reader);
-
-    std.debug.print("The result is {any}", .{result});
-}
-
 test parseTokens {
     var gpa: std.heap.GeneralPurposeAllocator(.{}) = .{};
     defer std.debug.assert(gpa.deinit() == .ok);
@@ -320,7 +309,7 @@ test "solve part 1" {
 }
 
 test "solve part 1 test.txt" {
-    const file = try std.fs.cwd().openFile("test.txt", .{ .mode = .read_only });
+    const file = try std.fs.cwd().openFile("../data/day03/test.txt", .{ .mode = .read_only });
     defer file.close();
 
     var buffered = std.io.bufferedReader(file.reader());
@@ -329,7 +318,7 @@ test "solve part 1 test.txt" {
 }
 
 test "solve part 2 test.txt" {
-    const file = try std.fs.cwd().openFile("test.txt", .{ .mode = .read_only });
+    const file = try std.fs.cwd().openFile("../data/day03/test.txt", .{ .mode = .read_only });
     defer file.close();
 
     var buffered = std.io.bufferedReader(file.reader());

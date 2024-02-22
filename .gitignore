@@ -6,3 +6,4 @@ compile_commands.json
 *.swp
 
 zig-cache/
+zig-out/

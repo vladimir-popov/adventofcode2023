@@ -1,14 +1,7 @@
 const std = @import("std");
 
-pub fn main() !void {
-    if (std.os.argv.len != 2) {
-        std.debug.print("You have to pass the file name as the single argument", .{});
-        std.process.exit(1);
-    }
-    const file_name: []const u8 = std.mem.span(std.os.argv[1]);
-    const file = try std.fs.cwd().openFile(file_name, .{ .mode = .read_only });
-    defer file.close();
-
+pub fn solve(file: std.fs.File, part: u8) !u32 {
+    _ = part;
     var buffered = std.io.bufferedReader(file.reader());
     var reader = buffered.reader();
 
@@ -27,9 +20,8 @@ pub fn main() !void {
             i = 0;
         }
     } else |err| {
-        // ignore end of file (very weird api IMO)
         if (err != error.EndOfStream)
             return err;
     }
-    std.debug.print("The result id {}", .{sum});
+    return sum;
 }

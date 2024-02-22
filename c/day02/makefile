@@ -14,21 +14,21 @@ ASANFLAGS  = -fsanitize=address
 ASANFLAGS += -fno-common
 ASANFLAGS += -fno-omit-frame-pointer
 
-solution.c.out: ./*.c
+day02.c.out: ./*.c
 	@echo Compiling $@
-	@$(CC) $(ASANFLAGS) $(CFLAGS) ./*.c -o solution.c.out $(LIBS)
+	@$(CC) $(ASANFLAGS) $(CFLAGS) ./*.c -o day02.c.out $(LIBS)
 
 .PHONY: compile
-compile: solution.c.out
-	@echo "solution compiled sucsessfully"
+compile: day02.c.out
+	@echo "day02 compiled sucsessfully"
 
 .PHONY: test
-test: solution.c.out
-	./solution.c.out test.txt
+test: day02.c.out
+	./day02.c.out test.txt
 
 .PHONY: solve
-solve: solution.c.out
-	./solution.c.out input.txt
+solve: day02.c.out
+	./day02.c.out input.txt
 
 .PHONY: clean
 clean:
