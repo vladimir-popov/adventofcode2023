@@ -1,8 +1,9 @@
-const tasks: [4]*const fn (file: std.fs.File, part: u8) anyerror!u32 = .{
+const tasks: [5]*const fn (file: std.fs.File, part: u8) anyerror!u32 = .{
     @import("day01.zig").solve,
     @import("day02.zig").solve,
     @import("day03.zig").solve,
     @import("day04.zig").solve,
+    @import("day05.zig").solve,
 };
 
 const std = @import("std");
