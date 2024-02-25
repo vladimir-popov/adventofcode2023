@@ -39,6 +39,7 @@ const Args = struct {
             },
             'p' => {
                 args.part = try std.fmt.parseInt(u8, arg[4..], 10);
+                std.debug.assert(args.part == 1 or args.part == 2);
             },
             'h' => {
                 const sout = std.io.getStdOut();

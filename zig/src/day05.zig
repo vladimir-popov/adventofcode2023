@@ -1,4 +1,5 @@
 const std = @import("std");
+const part2 = @import("day05_2.zig");
 
 /// The almanac (your puzzle input) lists all of the seeds that need to be
 /// planted. It also lists what type of soil to use with each kind of seed, what
@@ -118,15 +119,22 @@ const std = @import("std");
 ///
 /// What is the lowest location number that corresponds to any of the initial seed numbers?
 pub fn solve(file: std.fs.File, part: u8) !u32 {
-    _ = part;
+    if (part == 1) {
+        return part1_solve(file);
+    } else {
+        return try part2.solve(file);
+    }
+}
+
+fn part1_solve(file: std.fs.File) !u32 {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer std.debug.assert(gpa.deinit() == .ok);
     const alloc = gpa.allocator();
 
     var almanac = Almanac.init(alloc);
     defer almanac.deinit();
-
     try almanac.read(file.reader().any());
+
     var result: u32 = 0xffffffff;
     for (almanac.seeds.items) |seed| {
         const location = almanac.location(seed);
@@ -144,7 +152,7 @@ const RangeMap = struct {
         return self.source <= value and (self.source + self.len) > value;
     }
 
-    pub fn get(self: RangeMap, value: u32) u32 {
+    pub fn get(self: *const RangeMap, value: u32) u32 {
         if (self.contains(value))
             return @intCast(self.dest + value - self.source);
 
@@ -156,6 +164,16 @@ const RangeMap = struct {
         self.dest = try std.fmt.parseInt(u64, tokenazer.next().?, 10);
         self.source = try std.fmt.parseInt(u64, tokenazer.next().?, 10);
         self.len = try std.fmt.parseInt(u64, tokenazer.next().?, 10);
+    }
+
+    pub fn lessThan(_: void, lr: RangeMap, rr: RangeMap) bool {
+        return lr.source < rr.source;
+    }
+
+    pub fn compareWithKey(_: void, key: u32, range: RangeMap) std.math.Order {
+        if (key < range.source) return std.math.Order.lt;
+        if (key >= (range.source + range.len)) return std.math.Order.gt;
+        return std.math.Order.eq;
     }
 };
 
@@ -182,16 +200,17 @@ const Map = struct {
         return Map{ .ranges = std.ArrayList(RangeMap).init(alloc) };
     }
 
-    pub fn deinit(self: Map) void {
+    pub fn deinit(self: *Map) void {
         self.ranges.deinit();
     }
 
-    pub fn get(self: Map, key: u32) u32 {
-        for (self.ranges.items) |range| {
-            if (range.contains(key))
-                return range.get(key);
-        }
-        return key;
+    pub fn sort(self: *Map) void {
+        std.sort.pdq(RangeMap, self.ranges.items, {}, RangeMap.lessThan);
+    }
+
+    pub fn get(self: *const Map, key: u32) u32 {
+        const idx = std.sort.binarySearch(RangeMap, key, self.ranges.items, {}, RangeMap.compareWithKey);
+        if (idx) |i| return self.ranges.items[i].get(key) else return key;
     }
 };
 
@@ -238,22 +257,20 @@ const Almanac = struct {
                 continue;
             }
             if (line.len == 0) {
+                if (map) |m| m.sort();
                 map = null;
                 continue;
             }
             if (map) |m| {
                 var range = try m.ranges.addOne();
-                range.parse(line) catch |err| {
-                    std.debug.print("\nError {any} on parse range {s}\n", .{ err, line });
-                    return err;
-                };
+                try range.parse(line);
             } else {
                 map = self.__chooseMap(line);
             }
         }
     }
 
-    fn __chooseMap(self: *Almanac, line: []const u8) *Map {
+    inline fn __chooseMap(self: *Almanac, line: []const u8) *Map {
         switch (line[0]) {
             's' => if (line[1] == 'e')
                 return &self.seed_to_soil
@@ -268,14 +285,14 @@ const Almanac = struct {
         }
     }
 
-    fn __parseSeeds(self: *Almanac, line: []const u8) !void {
+    inline fn __parseSeeds(self: *Almanac, line: []const u8) !void {
         var tokenazier = std.mem.tokenizeScalar(u8, line, ' ');
         while (tokenazier.next()) |number| {
             try self.seeds.append(try std.fmt.parseInt(u32, number, 10));
         }
     }
 
-    pub fn location(self: Almanac, seed: u32) u32 {
+    pub fn location(self: *const Almanac, seed: u32) u32 {
         const soil = self.seed_to_soil.get(seed);
         const ferilizer = self.soil_to_fertilizer.get(soil);
         const water = self.fertilizer_to_water.get(ferilizer);
