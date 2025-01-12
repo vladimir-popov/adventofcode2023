@@ -5,5 +5,6 @@ compile_commands.json
 *.out.dSYM
 *.swp
 
+.zig-cache/
 zig-cache/
 zig-out/

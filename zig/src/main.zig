@@ -1,9 +1,10 @@
-const tasks: [5]*const fn (file: std.fs.File, part: u8) anyerror!u32 = .{
+const tasks: [6]*const fn (file: std.fs.File, part: u8) anyerror!u32 = .{
     @import("day01.zig").solve,
     @import("day02.zig").solve,
     @import("day03.zig").solve,
     @import("day04.zig").solve,
     @import("day05.zig").solve,
+    @import("day06.zig").solve,
 };
 
 const std = @import("std");
@@ -23,7 +24,9 @@ fn showHelp(writer: std.io.AnyWriter) !void {
         \\   --help   -  if passed, this help will be shown.
         \\
         \\Example:
-        \\  adventofcode --day02 --part1 day02/input.txt
+        \\  adventofcode --day01 input.txt
+        \\or:
+        \\  adventofcode --day02 --part1 test.txt
     );
 }
 
@@ -31,6 +34,32 @@ const Args = struct {
     day: u8 = 0,
     part: u8 = 1,
     input: []const u8 = undefined,
+
+    pub fn parse() !Args {
+        var args = Args{};
+        for (std.os.argv[1..]) |ptr| {
+            const arg: []const u8 = std.mem.span(ptr);
+            if (arg.len > 2 and arg[0] == '-' and arg[1] == '-')
+                handleOption(&args, arg[2..]) catch |err| {
+                    std.debug.print("Error on parse argument {s}\n", .{arg});
+                    return err;
+                }
+            else {
+                args.input = arg;
+            }
+        }
+        if (args.day == 0) {
+            const serr = std.io.getStdErr();
+            defer serr.close();
+            const writer = serr.writer();
+            _ = try writer.write("You have to pass a day. See help below:\n");
+            try showHelp(writer.any());
+            std.process.exit(1);
+        }
+        args.input = try resolveInputPath(args.input, args.day);
+
+        return args;
+    }
 
     fn handleOption(args: *Args, arg: []const u8) !void {
         switch (arg[0]) {
@@ -48,42 +77,17 @@ const Args = struct {
             },
             else => {
                 std.debug.print("Unknown argument {s}", .{arg});
-                std.os.exit(1);
+                std.process.exit(1);
             },
         }
-    }
-
-    pub fn parse() !Args {
-        var args = Args{};
-        for (std.os.argv) |ptr| {
-            const arg: []const u8 = std.mem.span(ptr);
-            if (arg.len > 2 and arg[0] == '-' and arg[1] == '-')
-                handleOption(&args, arg[2..]) catch |err| {
-                    std.debug.print("Error on parse argument {s}\n", .{arg});
-                    return err;
-                }
-            else {
-                args.input = arg;
-            }
-        }
-        if (args.day == 0) {
-            const serr = std.io.getStdErr();
-            defer serr.close();
-            const writer = serr.writer();
-            _ = try writer.write("You have to pass a day. See help below:\n");
-            try showHelp(writer.any());
-            std.os.exit(1);
-        }
-        args.input = try resolveInputPath(args.input, args.day);
-
-        return args;
     }
 };
 
 fn resolveInputPath(input: []const u8, day: u8) ![]const u8 {
     var buffer: [std.fs.MAX_PATH_BYTES]u8 = undefined;
-    return std.fs.realpath(input, &buffer) catch |err1| {
-        const dataPath = try std.fmt.bufPrint(&buffer, "../data/day{d:0>2}/{s}", .{ day, input });
+    const input_file = if (input.len > 0) input else "input.txt";
+    return std.fs.realpath(input_file, &buffer) catch |err1| {
+        const dataPath = try std.fmt.bufPrint(&buffer, "../data/day{d:0>2}/{s}", .{ day, input_file });
         return std.fs.realpath(dataPath, &buffer) catch |err2| {
             std.debug.print("File was not found neither in {s} ({any}) nor in {s} ({any})\n", .{ input, err1, buffer, err2 });
             return err1;
@@ -93,6 +97,7 @@ fn resolveInputPath(input: []const u8, day: u8) ![]const u8 {
 
 pub fn main() !void {
     const args = try Args.parse();
+    std.log.info("Run task for day {d} part {d} with input from {s}", .{ args.day, args.part, args.input });
     const file = try std.fs.openFileAbsolute(args.input, .{ .mode = .read_only });
     defer file.close();
 
