@@ -67,9 +67,9 @@ pub fn solve(file: std.fs.File, part: u8) !u32 {
     var result: u32 = 1;
     while (times_itr.next()) |s_time| {
         const s_distance = distances_itr.next().?;
-        const time = try std.fmt.parseInt(u32, s_time, 10);
-        const distance = try std.fmt.parseInt(u32, s_distance, 10);
-        const solutions_count = possibleSolutionsCount(time, distance);
+        const time = try std.fmt.parseInt(u64, s_time, 10);
+        const distance = try std.fmt.parseInt(u64, s_distance, 10);
+        const solutions_count = try possibleSolutionsCount(time, distance);
         std.debug.print(
             "Solutions count is {d} for time {d} and distance {d}\n",
             .{ solutions_count, time, distance },
@@ -79,63 +79,80 @@ pub fn solve(file: std.fs.File, part: u8) !u32 {
     return result;
 }
 
-fn possibleSolutionsCount(total_time: u32, record_distance: u32) u32 {
-    if (binarySearch(total_time, record_distance, 0, total_time)) |reference_hold_time| {
+fn possibleSolutionsCount(total_time: u64, record_distance: u64) !u32 {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer std.debug.assert(gpa.deinit() == .ok);
+    const alloc = gpa.allocator();
+
+    if (try binarySearch(alloc, total_time, record_distance, 0, total_time)) |reference_hold_time| {
         // std.debug.print("Reference point {d}\n", .{reference_hold_time});
         var min_time = reference_hold_time;
-        while (binarySearch(total_time, record_distance, 0, min_time)) |hold_time| {
+        while (try binarySearch(alloc, total_time, record_distance, 0, min_time)) |hold_time| {
             if (min_time == hold_time) break;
             min_time = hold_time;
         }
         // std.debug.print("Min time {d}\n", .{min_time});
         var max_time = min_time + 1;
-        while (binarySearch(total_time, record_distance, max_time, total_time)) |hold_time| {
+        while (try binarySearch(alloc, total_time, record_distance, max_time, total_time)) |hold_time| {
             if (max_time == hold_time) break;
             max_time = hold_time;
         }
         // std.debug.print("Max time {d}\n", .{max_time});
-        return max_time - min_time + 1;
+        return @intCast(max_time - min_time + 1);
     }
     return 0;
 }
 
 /// Returns first one available value.
 /// The `min_hold_time` and `max_hold_time` are inclusive.
-fn binarySearch(total_time: u32, record_distance: u32, min_hold_time: u32, max_hold_time: u32) ?u32 {
-    const middle = min_hold_time + @divTrunc(max_hold_time - min_hold_time, 2);
-    if (isBetterDistance(total_time, middle, record_distance)) {
-        return middle;
-    }
-    if (min_hold_time == middle) {
-        if (min_hold_time != max_hold_time and isBetterDistance(total_time, max_hold_time, record_distance)) {
-            return max_hold_time;
-        } else {
-            return null;
+fn binarySearch(
+    alloc: std.mem.Allocator,
+    total_time: u64,
+    record_distance: u64,
+    min_hold_time: u64,
+    max_hold_time: u64,
+) !?u64 {
+    var stack = std.ArrayList(struct { u64, u64 }).init(alloc);
+    defer stack.deinit();
+    try stack.append(.{ min_hold_time, max_hold_time });
+
+    while (stack.popOrNull()) |tuple| {
+        const min_hold = tuple[0];
+        const max_hold = tuple[1];
+        const middle = min_hold + @divTrunc(max_hold - min_hold, 2);
+        if (isBetterDistance(total_time, middle, record_distance)) {
+            return middle;
         }
-    }
-    if (binarySearch(total_time, record_distance, min_hold_time, middle)) |time| {
-        return time;
-    }
-    if (binarySearch(total_time, record_distance, middle, max_hold_time)) |time| {
-        return time;
+        if (min_hold == middle) {
+            if (min_hold != max_hold and isBetterDistance(total_time, max_hold, record_distance)) {
+                return max_hold;
+            } else {
+                continue;
+            }
+        }
+        try stack.append(.{ min_hold, middle });
+        try stack.append(.{ middle, max_hold });
     }
     return null;
 }
 
-inline fn isBetterDistance(total_time: u32, hold_time: u32, record_distance: u32) bool {
+inline fn isBetterDistance(total_time: u64, hold_time: u64, record_distance: u64) bool {
     return hold_time * (total_time - hold_time) > record_distance;
 }
 
 test "Day 06: binary search [0, 0]" {
-    try std.testing.expectEqual(null, binarySearch(5, 0, 0, 0));
+    const alloc = std.testing.allocator;
+    try std.testing.expectEqual(null, binarySearch(alloc, 5, 0, 0, 0));
 }
 
 test "Day 06: binary search [0, 1]" {
-    try std.testing.expectEqual(1, binarySearch(5, 0, 0, 1));
+    const alloc = std.testing.allocator;
+    try std.testing.expectEqual(1, binarySearch(alloc, 5, 0, 0, 1));
 }
 
 test "Day 06: binary search [1, 1]" {
-    try std.testing.expectEqual(1, binarySearch(5, 0, 1, 1));
+    const alloc = std.testing.allocator;
+    try std.testing.expectEqual(1, binarySearch(alloc, 5, 0, 1, 1));
 }
 
 test "Day 06: test example" {
