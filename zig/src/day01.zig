@@ -1,6 +1,6 @@
 const std = @import("std");
 
-pub fn solve(file: std.fs.File, part: u8) !u32 {
+pub fn solve(_: std.mem.Allocator, file: std.fs.File, part: u8) !u32 {
     _ = part;
     var buffered = std.io.bufferedReader(file.reader());
     var reader = buffered.reader();

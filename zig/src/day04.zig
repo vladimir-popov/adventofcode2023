@@ -64,7 +64,7 @@ const std = @import("std");
 /// instance of card 1, 2 instances of card 2, 4 instances of card 3, 8 instances of
 /// card 4, 14 instances of card 5, and 1 instance of card 6. In total, this example
 /// pile of scratchcards causes you to ultimately have 30 scratchcards!
-pub fn solve(file: std.fs.File, part: u8) !u32 {
+pub fn solve(_: std.mem.Allocator, file: std.fs.File, part: u8) !u32 {
     var part1 = Part1{};
     var part2 = Part2{};
     var solver = if (part == 1) part1.solver() else part2.solver();

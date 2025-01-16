@@ -26,12 +26,12 @@ const ArrayList = std.ArrayList;
 ///
 /// For each game, find the minimum set of cubes that must have been present.
 /// What is the sum of the power of these sets?
-pub fn solve(file: std.fs.File, part: u8) !u32 {
+pub fn solve(alloc: std.mem.Allocator, file: std.fs.File, part: u8) !u32 {
     var scanner = scanFile(file, .{});
     if (part == 1)
-        return try solvePart1(&scanner)
+        return try solvePart1(alloc, &scanner)
     else
-        return try solvePart2(&scanner);
+        return try solvePart2(alloc, &scanner);
 }
 
 const Set = struct {
@@ -143,13 +143,9 @@ const Game = struct {
     }
 };
 
-fn solvePart1(scanner: anytype) !u32 {
-    var gpa: std.heap.GeneralPurposeAllocator(.{}) = .{};
-    defer std.debug.assert(gpa.deinit() == .ok);
-    const allocator = gpa.allocator();
-
+fn solvePart1(alloc: std.mem.Allocator, scanner: anytype) !u32 {
     var result: u32 = 0;
-    var game = Game.init(allocator);
+    var game = Game.init(alloc);
     defer game.deinit();
     while (try game.read(@TypeOf(scanner), scanner)) : (game.reset()) {
         if (!game.is_possible())
@@ -173,13 +169,9 @@ test "Part 1. Input data" {
     try std.testing.expectEqual(2486, try solvePart1(&scanner));
 }
 
-fn solvePart2(scanner: anytype) !u32 {
-    var gpa: std.heap.GeneralPurposeAllocator(.{}) = .{};
-    defer std.debug.assert(gpa.deinit() == .ok);
-    const allocator = gpa.allocator();
-
+fn solvePart2(alloc: std.mem.Allocator, scanner: anytype) !u32 {
     var result: u32 = 0;
-    var game = Game.init(allocator);
+    var game = Game.init(alloc);
     defer game.deinit();
     while (try game.read(@TypeOf(scanner), scanner)) : (game.reset()) {
         const numbers = game.fewestNumbers();

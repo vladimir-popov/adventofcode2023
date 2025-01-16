@@ -54,7 +54,7 @@ const std = @import("std");
 /// To see how much margin of error you have, determine the number of ways you
 /// can beat the record in each race; in this example, if you multiply these
 /// values together, you get 288 (4 * 8 * 9).
-pub fn solve(file: std.fs.File, part: u8) !u32 {
+pub fn solve(alloc: std.mem.Allocator, file: std.fs.File, part: u8) !u32 {
     _ = part;
     var reader = file.reader().any();
     var buffer: [1024]u8 = undefined;
@@ -69,7 +69,7 @@ pub fn solve(file: std.fs.File, part: u8) !u32 {
         const s_distance = distances_itr.next().?;
         const time = try std.fmt.parseInt(u64, s_time, 10);
         const distance = try std.fmt.parseInt(u64, s_distance, 10);
-        const solutions_count = try possibleSolutionsCount(time, distance);
+        const solutions_count = try possibleSolutionsCount(alloc, time, distance);
         std.debug.print(
             "Solutions count is {d} for time {d} and distance {d}\n",
             .{ solutions_count, time, distance },
@@ -79,11 +79,7 @@ pub fn solve(file: std.fs.File, part: u8) !u32 {
     return result;
 }
 
-fn possibleSolutionsCount(total_time: u64, record_distance: u64) !u32 {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer std.debug.assert(gpa.deinit() == .ok);
-    const alloc = gpa.allocator();
-
+fn possibleSolutionsCount(alloc: std.mem.Allocator, total_time: u64, record_distance: u64) !u32 {
     if (try binarySearch(alloc, total_time, record_distance, 0, total_time)) |reference_hold_time| {
         // std.debug.print("Reference point {d}\n", .{reference_hold_time});
         var min_time = reference_hold_time;

@@ -23,10 +23,7 @@ const std = @import("std");
 /// number 82, which corresponds to soil 84, fertilizer 84, water 84, light 77,
 /// temperature 45, humidity 46, and location 46. So, the lowest location number
 /// is 46.
-pub fn solve(file: std.fs.File) !u32 {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer std.debug.assert(gpa.deinit() == .ok);
-    const alloc = gpa.allocator();
+pub fn solve(alloc: std.mem.Allocator, file: std.fs.File) !u32 {
     var reader = file.reader().any();
     var buffer: [1024]u8 = undefined;
 

@@ -1,4 +1,4 @@
-const tasks: [6]*const fn (file: std.fs.File, part: u8) anyerror!u32 = .{
+const tasks: [6]*const fn (alloc: std.mem.Allocator, file: std.fs.File, part: u8) anyerror!u32 = .{
     @import("day01.zig").solve,
     @import("day02.zig").solve,
     @import("day03.zig").solve,
@@ -8,6 +8,8 @@ const tasks: [6]*const fn (file: std.fs.File, part: u8) anyerror!u32 = .{
 };
 
 const std = @import("std");
+
+const Path = [std.fs.MAX_PATH_BYTES:0]u8;
 
 fn showHelp(writer: std.io.AnyWriter) !void {
     _ = try writer.write(
@@ -32,10 +34,12 @@ fn showHelp(writer: std.io.AnyWriter) !void {
 
 const Args = struct {
     day: u8 = 0,
-    part: u8 = 1,
-    input: []const u8 = undefined,
+    part: ?u8 = null,
+    input_path: Path = undefined,
+    input_file: std.fs.File = undefined,
 
     pub fn parse() !Args {
+        var input: []const u8 = &.{};
         var args = Args{};
         for (std.os.argv[1..]) |ptr| {
             const arg: []const u8 = std.mem.span(ptr);
@@ -45,7 +49,7 @@ const Args = struct {
                     return err;
                 }
             else {
-                args.input = arg;
+                input = arg;
             }
         }
         if (args.day == 0) {
@@ -56,9 +60,13 @@ const Args = struct {
             try showHelp(writer.any());
             std.process.exit(1);
         }
-        args.input = try resolveInputPath(args.input, args.day);
+        try args.resolveInputPath(std.fs.cwd(), if (input.len > 0) input else "input.txt");
 
         return args;
+    }
+
+    pub fn deinit(self: Args) void {
+        self.input_file.close();
     }
 
     fn handleOption(args: *Args, arg: []const u8) !void {
@@ -81,29 +89,83 @@ const Args = struct {
             },
         }
     }
+
+    fn resolveInputPath(args: *Args, cwd: std.fs.Dir, input: []const u8) !void {
+        std.debug.assert(input.len > 0);
+        const flags: std.fs.File.OpenFlags = .{ .mode = .read_only };
+        std.log.debug("Input is '{s}'", .{input});
+        if (cwd.openFile(input, flags)) |file| {
+            std.mem.copyForwards(u8, &args.input_path, input);
+            args.input_file = file;
+            return;
+        } else |err1| switch (err1) {
+            error.FileNotFound => {
+                var day_path_buffer: Path = undefined;
+                const day_path = try std.fmt.bufPrint(
+                    &day_path_buffer,
+                    "../data/day{d:0>2}/{s}",
+                    .{ args.day, input },
+                );
+                std.log.debug("The path with 'day' part is '{s}'", .{day_path});
+                if (cwd.openFile(day_path, flags)) |file| {
+                    std.mem.copyForwards(u8, &args.input_path, day_path);
+                    args.input_file = file;
+                    return;
+                } else |err2| switch (err2) {
+                    error.FileNotFound => {
+                        if (args.part) |p| {
+                            var part_path_buffer: Path = undefined;
+                            const part_path = try std.fmt.bufPrint(
+                                &part_path_buffer,
+                                "../data/day{d:0>2}/part{d:0>2}/{s}",
+                                .{ args.day, p, input },
+                            );
+                            std.log.debug("The path with 'part' part is '{s}'", .{part_path});
+                            if (cwd.openFile(part_path, flags)) |file| {
+                                std.mem.copyForwards(u8, &args.input_path, part_path);
+                                args.input_file = file;
+                                return;
+                            } else |err3| switch (err3) {
+                                error.FileNotFound => {
+                                    std.log.err(
+                                        "File was not found neither in '{s}' ({any}), nor in '{s}' ({any}), nor in '{s}' ({any})\n",
+                                        .{ input, err1, &day_path_buffer, err2, part_path, err3 },
+                                    );
+                                    return err3;
+                                },
+                                else => return err3,
+                            }
+                        }
+                        std.log.err(
+                            "File was not found neither in '{s}' ({any}) nor in '{s}' ({any})\n",
+                            .{ input, err1, day_path, err2 },
+                        );
+                        return err2;
+                    },
+                    else => return err2,
+                }
+                return err1;
+            },
+            else => return err1,
+        }
+    }
 };
 
-fn resolveInputPath(input: []const u8, day: u8) ![]const u8 {
-    var buffer: [std.fs.MAX_PATH_BYTES]u8 = undefined;
-    const input_file = if (input.len > 0) input else "input.txt";
-    return std.fs.realpath(input_file, &buffer) catch |err1| {
-        const dataPath = try std.fmt.bufPrint(&buffer, "../data/day{d:0>2}/{s}", .{ day, input_file });
-        return std.fs.realpath(dataPath, &buffer) catch |err2| {
-            std.debug.print("File was not found neither in {s} ({any}) nor in {s} ({any})\n", .{ input, err1, buffer, err2 });
-            return err1;
-        };
-    };
-}
-
 pub fn main() !void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer std.debug.assert(gpa.deinit() == .ok);
+    const alloc = gpa.allocator();
+
     const args = try Args.parse();
-    std.log.info("Run task for day {d} part {d} with input from {s}", .{ args.day, args.part, args.input });
-    const file = try std.fs.openFileAbsolute(args.input, .{ .mode = .read_only });
-    defer file.close();
+    defer args.deinit();
+    if (args.part) |p|
+        std.log.info("Run task for day {d} part {d} with input from '{s}'", .{ args.day, p, args.input_path })
+    else
+        std.log.info("Run task for day {d} with input from '{s}'", .{ args.day, args.input_path });
 
-    const result = try tasks[args.day - 1](file, args.part);
+    const result = try tasks[args.day - 1](alloc, args.input_file, args.part orelse 1);
 
-    std.debug.print("The result for the day {d} part {d} is {d}", .{ args.day, args.part, result });
+    std.debug.print("The result is {d}", .{result});
 }
 
 test "all tests" {

@@ -30,7 +30,7 @@ const std = @import("std");
 /// 467 and 35, so its gear ratio is 16345. The second gear is in the lower right; its gear ratio is
 /// 451490. (The * adjacent to 617 is not a gear because it is only adjacent to one part number.)
 /// Adding up all of the gear ratios produces 467835.
-pub fn solve(file: std.fs.File, part: u8) !u32 {
+pub fn solve(_: std.mem.Allocator, file: std.fs.File, part: u8) !u32 {
     var buffered = std.io.bufferedReader(file.reader());
     const reader = buffered.reader().any();
     return if (part == 1) try solvePart1(reader) else try solvePart2(reader);
