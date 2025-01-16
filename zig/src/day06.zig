@@ -154,6 +154,6 @@ test "Day 06: binary search [1, 1]" {
 test "Day 06: test example" {
     // 1     2       5      7
     // |-----|=======|------|
-    const result = possibleSolutionsCount(7, 9);
+    const result = possibleSolutionsCount(std.testing.allocator, 7, 9);
     try std.testing.expectEqual(4, result);
 }

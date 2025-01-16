@@ -1,10 +1,11 @@
-const tasks: [6]*const fn (alloc: std.mem.Allocator, file: std.fs.File, part: u8) anyerror!u32 = .{
+const tasks = [_]*const fn (alloc: std.mem.Allocator, file: std.fs.File, part: u8) anyerror!u32{
     @import("day01.zig").solve,
     @import("day02.zig").solve,
     @import("day03.zig").solve,
     @import("day04.zig").solve,
     @import("day05.zig").solve,
     @import("day06.zig").solve,
+    @import("day07.zig").solve,
 };
 
 const std = @import("std");

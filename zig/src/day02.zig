@@ -159,14 +159,14 @@ test "Part 1. Test data" {
     const file = try std.fs.cwd().openFile("../data/day02/test.txt", .{});
     defer file.close();
     var scanner = scanFile(file, .{});
-    try std.testing.expectEqual(8, try solvePart1(&scanner));
+    try std.testing.expectEqual(8, try solvePart1(std.testing.allocator, &scanner));
 }
 
 test "Part 1. Input data" {
     const file = try std.fs.cwd().openFile("../data/day02/input.txt", .{});
     defer file.close();
     var scanner = scanFile(file, .{});
-    try std.testing.expectEqual(2486, try solvePart1(&scanner));
+    try std.testing.expectEqual(2486, try solvePart1(std.testing.allocator, &scanner));
 }
 
 fn solvePart2(alloc: std.mem.Allocator, scanner: anytype) !u32 {
@@ -184,14 +184,14 @@ test "Part 2. Test data" {
     const file = try std.fs.cwd().openFile("../data/day02/test.txt", .{});
     defer file.close();
     var scanner = scanFile(file, .{});
-    try std.testing.expectEqual(2286, try solvePart2(&scanner));
+    try std.testing.expectEqual(2286, try solvePart2(std.testing.allocator, &scanner));
 }
 
 test "Part 2. Input data" {
     const file = try std.fs.cwd().openFile("../data/day02/input.txt", .{});
     defer file.close();
     var scanner = scanFile(file, .{});
-    try std.testing.expectEqual(87984, try solvePart2(&scanner));
+    try std.testing.expectEqual(87984, try solvePart2(std.testing.allocator, &scanner));
 }
 
 const ScanOptions = struct { buffer_size: u8 = 128 };

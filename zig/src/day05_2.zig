@@ -60,7 +60,7 @@ test "part2: test.txt" {
     const file = try std.fs.cwd().openFile("../data/day05/test.txt", .{ .mode = .read_only });
     defer file.close();
 
-    try std.testing.expectEqual(46, try solve(file));
+    try std.testing.expectEqual(46, try solve(std.testing.allocator, file));
 }
 
 fn parseSeeds(seeds: *std.ArrayList(Range), line: []const u8) !void {

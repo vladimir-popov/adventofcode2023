@@ -175,13 +175,13 @@ fn matchedCardsCount(winners: []const u8, numbers: []const u8) !u32 {
 test "part 1: test.txt" {
     const file = try std.fs.cwd().openFile("../data/day04/test.txt", .{ .mode = .read_only });
     defer file.close();
-    const actual = solve(file, 1);
+    const actual = solve(std.testing.allocator, file, 1);
     try std.testing.expectEqual(13, actual);
 }
 
 test "part 2: test.txt" {
     const file = try std.fs.cwd().openFile("../data/day04/test.txt", .{ .mode = .read_only });
     defer file.close();
-    const actual = solve(file, 2);
+    const actual = solve(std.testing.allocator, file, 2);
     try std.testing.expectEqual(30, actual);
 }

@@ -307,12 +307,12 @@ test "part1: test.txt" {
     const file = try std.fs.cwd().openFile("../data/day05/test.txt", .{ .mode = .read_only });
     defer file.close();
 
-    try std.testing.expectEqual(35, try solve(file, 1));
+    try std.testing.expectEqual(35, try solve(std.testing.allocator, file, 1));
 }
 
 test "part1: input.txt" {
     const file = try std.fs.cwd().openFile("../data/day05/input.txt", .{ .mode = .read_only });
     defer file.close();
 
-    try std.testing.expectEqual(313045984, try solve(file, 1));
+    try std.testing.expectEqual(313045984, try solve(std.testing.allocator, file, 1));
 }
