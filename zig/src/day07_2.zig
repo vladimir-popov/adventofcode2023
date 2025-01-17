@@ -1,67 +1,35 @@
 const std = @import("std");
-const part2 = @import("day07_2.zig");
 
-/// Camel Cards is sort of similar to poker except it's designed to be easier to
-/// play while riding a camel.
+/// To make things a little more interesting, the Elf introduces one additional
+/// rule. Now, J cards are jokers - wildcards that can act like whatever card
+/// would make the hand the strongest type possible.
 ///
-/// In Camel Cards, you get a list of hands, and your goal is to order them
-/// based on the strength of each hand. A hand consists of five cards labeled
-/// one of A, K, Q, J, T, 9, 8, 7, 6, 5, 4, 3, or 2. The relative strength of
-/// each card follows this order, where A is the highest and 2 is the lowest.
+/// To balance this, J cards are now the weakest individual cards, weaker even than 2.
+/// The other cards stay in the same order: A, K, Q, T, 9, 8, 7, 6, 5, 4, 3, 2, J.
 ///
-/// Every hand is exactly one type. From strongest to weakest, they are:
+/// J cards can pretend to be whatever card is best for the purpose of
+/// determining hand type; for example, QJJQ2 is now considered four of a kind.
+/// However, for the purpose of breaking ties between two hands of the same
+/// type, J is always treated as J, not the card it's pretending to be: JKKK2
+/// is weaker than QQQQ2 because J is weaker than Q.
 ///
-/// - Five of a kind, where all five cards have the same label: AAAAA
-/// - Four of a kind, where four cards have the same label and one card has a
-///   different label: AA8AA
-/// - Full house, where three cards have the same label, and the remaining two
-///   cards share a different label: 23332
-/// - Three of a kind, where three cards have the same label, and the remaining
-///   two cards are each different from any other card in the hand: TTT98
-/// - Two pair, where two cards share one label, two other cards share a second
-///   label, and the remaining card has a third label: 23432
-/// - One pair, where two cards share one label, and the other three cards have
-///   a different label from the pair and each other: A23A4
-/// - High card, where all cards' labels are distinct: 23456
+/// Now, the above example goes very differently:
 ///
-/// Hands are primarily ordered based on type; for example, every full house is
-/// stronger than any three of a kind.
+///    32T3K 765
+///    T55J5 684
+///    KK677 28
+///    KTJJT 220
+///    QQQJA 483
 ///
-/// If two hands have the same type, a second ordering rule takes effect. Start
-/// by comparing the first card in each hand. If these cards are different, the
-/// hand with the stronger first card is considered stronger. If the first card
-/// in each hand have the same label, however, then move on to considering the
-/// second card in each hand. If they differ, the hand with the higher second
-/// card wins; otherwise, continue with the third card in each hand, then the
-/// fourth, then the fifth.
+///    32T3K is still the only one pair; it doesn't contain any jokers,
+///    so its strength doesn't increase.
+///    KK677 is now the only two pair, making it the second-weakest hand.
+///    T55J5, KTJJT, and QQQJA are now all four of a kind!
+///    T55J5 gets rank 3, QQQJA gets rank 4, and KTJJT gets rank 5.
 ///
-/// So, 33332 and 2AAAA are both four of a kind hands, but 33332 is stronger
-/// because its first card is stronger. Similarly, 77888 and 77788 are both a
-/// full house, but 77888 is stronger because its third card is stronger (and
-/// both hands have the same first and second card).
+/// With the new joker rule, the total winnings in this example are 5905.
 ///
-/// To play Camel Cards, you are given a list of hands and their corresponding
-/// bid (your puzzle input). For example:
-///
-///   32T3K 765
-///   T55J5 684
-///   KK677 28
-///   KTJJT 220
-///   QQQJA 483
-///
-/// This example shows five hands; each hand is followed by its bid amount. Each
-/// hand wins an amount equal to its bid multiplied by its rank, where the weakest
-/// hand gets rank 1, the second-weakest hand gets rank 2, and so on up to the
-/// strongest hand. Because there are five hands in this example, the strongest
-/// hand will have rank 5 and its bid will be multiplied by 5.
-///
-/// Now, you can determine the total winnings of this set of hands by adding up
-/// the result of multiplying each hand's bid with its rank (765 * 1 + 220 * 2 +
-/// 28 * 3 + 684 * 4 + 483 * 5). So the total winnings in this example are 6440.
-///
-pub fn solve(alloc: std.mem.Allocator, file: std.fs.File, part: u8) !u32 {
-    if (part == 2) return try part2.solve(alloc, file);
-
+pub fn solve(alloc: std.mem.Allocator, file: std.fs.File) !u32 {
     var buffered = std.io.bufferedReader(file.reader());
     var reader = buffered.reader();
     var hands = std.ArrayList(Tuple).init(alloc);
@@ -117,14 +85,14 @@ const Hand = struct {
     }
 
     pub fn cardsType(self: Hand) CardsType {
-        // 2,3,4,5,6,7,8,9,T,J,Q,K,A
+        // J,2,3,4,5,6,7,8,9,T,Q,K,A
         var hist: [13]u8 = [_]u8{0} ** 13;
         for (0..self.cards.len) |i| {
-            const j = cardScore(self.cards[i]) - 1;
-            hist[j] += 1;
+            const l = cardScore(self.cards[i]) - 1;
+            hist[l] += 1;
         }
-        const two_max = twoMax(&hist);
-        return switch (two_max[0]) {
+        const two_max = twoMax(hist[1..]);
+        return switch (two_max[0] + hist[0]) {
             5 => .Five_of_a_kind,
             4 => .Four_of_a_kind,
             3 => if (two_max[1] == 2)
@@ -143,9 +111,12 @@ const Hand = struct {
     test cardsType {
         const fixture = [_]struct { []const u8, CardsType }{
             .{ "AAAAA", .Five_of_a_kind },
+            .{ "AAJAA", .Five_of_a_kind },
             .{ "AA8AA", .Four_of_a_kind },
+            .{ "QJJQ2", .Four_of_a_kind },
             .{ "23332", .Full_house },
             .{ "TTT98", .Three_of_a_kind },
+            .{ "2343J", .Three_of_a_kind },
             .{ "23432", .Two_pair },
             .{ "A23A4", .One_pair },
             .{ "23456", .High_card },
@@ -196,9 +167,9 @@ const Hand = struct {
         const expectation = [_]Hand{
             try Hand.parse("32T3K"),
             try Hand.parse("KTJJT"),
-            try Hand.parse("KK677"),
             try Hand.parse("T55J5"),
             try Hand.parse("QQQJA"),
+            try Hand.parse("KK677"),
         };
 
         std.mem.sort(Hand, &hands, {}, Hand.lessThan);
@@ -209,9 +180,9 @@ const Hand = struct {
 
 fn cardScore(card: u8) u8 {
     return switch (card) {
-        '2'...'9' => card - '1',
-        'T' => 9,
-        'J' => 10,
+        'J' => 1,
+        '2'...'9' => card - '0',
+        'T' => 10,
         'Q' => 11,
         'K' => 12,
         'A' => 13,
@@ -220,7 +191,7 @@ fn cardScore(card: u8) u8 {
 }
 
 test cardScore {
-    const all_cards = [_]u8{ '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A' };
+    const all_cards = [_]u8{ 'J', '2', '3', '4', '5', '6', '7', '8', '9', 'T', 'Q', 'K', 'A' };
     for (all_cards) |card| {
         std.testing.expectEqual(card, all_cards[cardScore(card) - 1]) catch |err| {
             std.log.debug("Card {c} score {d}", .{ card, cardScore(card) });
