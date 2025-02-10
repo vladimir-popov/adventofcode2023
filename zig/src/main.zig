@@ -6,11 +6,36 @@ const tasks = [_]*const fn (alloc: std.mem.Allocator, file: std.fs.File, part: u
     @import("day05.zig").solve,
     @import("day06.zig").solve,
     @import("day07.zig").solve,
+    @import("day08.zig").solve,
 };
 
 const std = @import("std");
 
+pub const std_options: std.Options = .{
+    .log_level = .info,
+    .log_scope_levels = &[_]std.log.ScopeLevel{
+        .{ .scope = .parsec, .level = .info },
+    },
+};
+
 const Path = [std.fs.MAX_PATH_BYTES:0]u8;
+
+pub fn main() !void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer std.debug.assert(gpa.deinit() == .ok);
+    const alloc = gpa.allocator();
+
+    const args = try Args.parse();
+    defer args.deinit();
+    if (args.part) |p|
+        std.log.info("Run task for day {d} part {d} with input from '{s}'", .{ args.day, p, args.input_path })
+    else
+        std.log.info("Run task for day {d} with input from '{s}'", .{ args.day, args.input_path });
+
+    const result = try tasks[args.day - 1](alloc, args.input_file, args.part orelse 1);
+
+    std.debug.print("The result is {d}", .{result});
+}
 
 fn showHelp(writer: std.io.AnyWriter) !void {
     _ = try writer.write(
@@ -151,23 +176,6 @@ const Args = struct {
         }
     }
 };
-
-pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer std.debug.assert(gpa.deinit() == .ok);
-    const alloc = gpa.allocator();
-
-    const args = try Args.parse();
-    defer args.deinit();
-    if (args.part) |p|
-        std.log.info("Run task for day {d} part {d} with input from '{s}'", .{ args.day, p, args.input_path })
-    else
-        std.log.info("Run task for day {d} with input from '{s}'", .{ args.day, args.input_path });
-
-    const result = try tasks[args.day - 1](alloc, args.input_file, args.part orelse 1);
-
-    std.debug.print("The result is {d}", .{result});
-}
 
 test "all tests" {
     _ = tasks;
