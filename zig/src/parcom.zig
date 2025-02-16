@@ -6,6 +6,32 @@ const Cursor = struct {
     buffer: std.ArrayList(u8),
     reader: std.io.AnyReader,
     idx: usize = 0,
+
+    pub fn format(self: @This(), comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
+        if (self.idx < self.buffer.items.len) {
+            const left_bound = if (self.idx == 0) 0 else @min(self.idx - 1, self.buffer.items.len);
+            const right_bound = @min(self.idx + 1, self.buffer.items.len);
+            const symbol = switch (self.buffer.items[self.idx]) {
+                '\n' => "\\n",
+                '\t' => "\\t",
+                else => &[_]u8{self.buffer.items[self.idx]},
+            };
+            try writer.print(
+                "position {d}:\n{s}[{s}]{s}",
+                .{
+                    self.idx,
+                    self.buffer.items[0..left_bound],
+                    symbol,
+                    self.buffer.items[right_bound..],
+                },
+            );
+        } else {
+            try writer.print(
+                "position {d}:\n{s}[]",
+                .{ self.idx, self.buffer.items },
+            );
+        }
+    }
 };
 
 pub fn Either(comptime A: type, B: type) type {
@@ -109,8 +135,8 @@ fn ConditionalParser(comptime Label: []const u8, Underlying: type, Context: type
                 log.debug("The value {any} is not satisfied to the condition.", .{res});
             }
             log.debug(
-                "Parser {any} was failed at position {d}:\n{s}",
-                .{ self.underlying, cursor.idx, cursor.buffer.items },
+                "Parser {any} was failed at {any}",
+                .{ self.underlying, cursor },
             );
             cursor.idx = orig_idx;
             return null;
@@ -165,6 +191,27 @@ test "Parse char in range" {
     try std.testing.expectEqual('C', try parseStr(std.testing.allocator, p, "C"));
 }
 
+pub inline fn letterOrNumber() ConditionalParser("Letter or number", AnyCharParser, void) {
+    return conditional("Letter or number", anyChar(), {}, struct {
+        fn isLetterOrNumber(_: void, value: u8) bool {
+            return switch (value) {
+                'a'...'z' => true,
+                'A'...'Z' => true,
+                '0'...'9' => true,
+                else => false,
+            };
+        }
+    }.isLetterOrNumber);
+}
+
+test "Parse letters and numbers" {
+    const p = letterOrNumber();
+    try std.testing.expectEqual('b', try parseStr(std.testing.allocator, p, "b"));
+    try std.testing.expectEqual('A', try parseStr(std.testing.allocator, p, "A"));
+    try std.testing.expectEqual('1', try parseStr(std.testing.allocator, p, "1"));
+    try std.testing.expectEqual(null, try parseStr(std.testing.allocator, p, "-"));
+}
+
 pub inline fn constant(
     parser: anytype,
     comptime template: @TypeOf(parser).Type,
@@ -185,8 +232,8 @@ fn ConstParser(comptime Underlying: type, comptime template: Underlying.Type) ty
             if (try self.underlying.parse(cursor)) |res| {
                 if (res == template) return res;
                 log.debug(
-                    "{any} is not equal to {any} at position {d}:\n{s}",
-                    .{ res, template, cursor.idx, cursor.buffer.items },
+                    "{any} is not equal to {any} at {any}",
+                    .{ res, template, cursor },
                 );
             }
             cursor.idx = orig_idx;
@@ -266,8 +313,8 @@ fn ArrayParser(comptime Underlying: type, count: u8) type {
                     result[i] = t;
                 } else {
                     log.debug(
-                        "Parser {any} was failed at position {d}:\n{s}",
-                        .{ self.underlying, cursor.idx, cursor.buffer.items },
+                        "Parser {any} was failed at {any}",
+                        .{ self.underlying, cursor },
                     );
                     cursor.idx = orig_idx;
                     return null;
@@ -277,7 +324,7 @@ fn ArrayParser(comptime Underlying: type, count: u8) type {
         }
 
         pub fn format(self: @This(), comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
-            try writer.print("<array of {s}>", .{self.underlying});
+            try writer.print("<Array of {s}>", .{self.underlying});
         }
     };
 }
@@ -392,8 +439,8 @@ fn TupleParser(comptime Parsers: type) type {
                     result[i] = v;
                 } else {
                     log.debug(
-                        "Parser {d} {any} was failed at position {d}:\n{s}",
-                        .{ i, self.parsers[i], cursor.idx, cursor.buffer.items },
+                        "Parser {d} {any} was failed at {any}",
+                        .{ i, self.parsers[i], cursor },
                     );
                     cursor.idx = orig_idx;
                     return null;
@@ -436,8 +483,8 @@ fn EitherParser(comptime UnderlyingA: type, UnderlyingB: type) type {
                 return .{ .right = b };
             }
             log.debug(
-                "Parser both parsers {any} and {any} were failed at position {d}:\n{s}",
-                .{ self.left, self.right, cursor.idx, cursor.buffer.items },
+                "Parser both parsers {any} and {any} were failed at {any}",
+                .{ self.left, self.right, cursor },
             );
             cursor.idx = orig_idx;
             return null;
@@ -504,10 +551,12 @@ fn OneCharOfParser(comptime chars: []const u8) type {
                 if (std.sort.binarySearch(u8, ch, &sorted_chars, {}, compareChars)) |_| {
                     return ch;
                 } else {
-                    log.debug(
-                        "The {c} symbol was not found in {s}",
-                        .{ ch, chars },
-                    );
+                    const symbol = switch (ch) {
+                        '\n' => "\\n",
+                        '\t' => "\\t",
+                        else => &[_]u8{ch},
+                    };
+                    log.debug("The '{s}' symbol was not found in {s}", .{ symbol, chars });
                     cursor.idx = orig_idx;
                     return null;
                 }
@@ -617,10 +666,7 @@ fn IntParser(comptime T: type, max_buf_size: usize) type {
                     };
                 }
             }
-            log.debug(
-                "Parsing integer was failed at position {d}:\n{s}",
-                .{ cursor.idx, cursor.buffer.items },
-            );
+            log.debug("Parsing integer was failed at {any}", .{cursor});
             cursor.idx = orig_idx;
             return null;
         }
