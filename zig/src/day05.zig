@@ -118,7 +118,7 @@ const part2 = @import("day05_2.zig");
 /// So, the lowest location number in this example is 35.
 ///
 /// What is the lowest location number that corresponds to any of the initial seed numbers?
-pub fn solve(alloc: std.mem.Allocator, file: std.fs.File, part: u8) !u32 {
+pub fn solve(alloc: std.mem.Allocator, file: std.fs.File, part: u8) !u64 {
     if (part == 1) {
         return part1_solve(file);
     } else {
@@ -126,7 +126,7 @@ pub fn solve(alloc: std.mem.Allocator, file: std.fs.File, part: u8) !u32 {
     }
 }
 
-fn part1_solve(file: std.fs.File) !u32 {
+fn part1_solve(file: std.fs.File) !u64 {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer std.debug.assert(gpa.deinit() == .ok);
     const alloc = gpa.allocator();

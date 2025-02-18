@@ -54,7 +54,7 @@ const std = @import("std");
 /// To see how much margin of error you have, determine the number of ways you
 /// can beat the record in each race; in this example, if you multiply these
 /// values together, you get 288 (4 * 8 * 9).
-pub fn solve(alloc: std.mem.Allocator, file: std.fs.File, part: u8) !u32 {
+pub fn solve(alloc: std.mem.Allocator, file: std.fs.File, part: u8) !u64 {
     _ = part;
     var reader = file.reader().any();
     var buffer: [1024]u8 = undefined;

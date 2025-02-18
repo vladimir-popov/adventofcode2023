@@ -12,7 +12,7 @@ const log = std.log.scoped(.day08);
 /// It seems like you're meant to use the left/right instructions to navigate the
 /// network. Perhaps if you have the camel follow the same instructions, you can
 /// escape the haunted wasteland!
-pub fn solve(alloc: std.mem.Allocator, file: std.fs.File, part: u8) !u32 {
+pub fn solve(alloc: std.mem.Allocator, file: std.fs.File, part: u8) !u64 {
     var buffered = std.io.bufferedReader(file.reader());
     const reader = buffered.reader();
     if (part == 1)
@@ -40,7 +40,7 @@ pub fn solve(alloc: std.mem.Allocator, file: std.fs.File, part: u8) !u32 {
 /// instructions, repeat the whole sequence of instructions as necessary: LLR
 /// really means LLRLLRLLR... and so on. In example above, here is a situation
 /// that takes 6 steps to reach ZZZ.
-fn part1(alloc: std.mem.Allocator, reader: anytype) !u32 {
+fn part1(alloc: std.mem.Allocator, reader: anytype) !u64 {
     var map = Map.init(alloc);
     defer map.deinit();
     std.debug.assert(try map.parse(alloc, reader));
@@ -70,7 +70,7 @@ fn part1(alloc: std.mem.Allocator, reader: anytype) !u32 {
 /// in Z! If you were a ghost, you'd probably just start at every node that ends
 /// with A and follow all of the paths at the same time until they all
 /// simultaneously end up at nodes that end with Z.
-fn part2(alloc: std.mem.Allocator, reader: anytype) !u32 {
+fn part2(alloc: std.mem.Allocator, reader: anytype) !u64 {
     var map = Map.init(alloc);
     defer map.deinit();
     std.debug.assert(try map.parse(alloc, reader));

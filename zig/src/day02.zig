@@ -26,7 +26,7 @@ const ArrayList = std.ArrayList;
 ///
 /// For each game, find the minimum set of cubes that must have been present.
 /// What is the sum of the power of these sets?
-pub fn solve(alloc: std.mem.Allocator, file: std.fs.File, part: u8) !u32 {
+pub fn solve(alloc: std.mem.Allocator, file: std.fs.File, part: u8) !u64 {
     var scanner = scanFile(file, .{});
     if (part == 1)
         return try solvePart1(alloc, &scanner)

@@ -29,7 +29,7 @@ const std = @import("std");
 ///
 /// With the new joker rule, the total winnings in this example are 5905.
 ///
-pub fn solve(alloc: std.mem.Allocator, file: std.fs.File) !u32 {
+pub fn solve(alloc: std.mem.Allocator, file: std.fs.File) !u64 {
     var buffered = std.io.bufferedReader(file.reader());
     var reader = buffered.reader();
     var hands = std.ArrayList(Tuple).init(alloc);

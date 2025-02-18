@@ -1,4 +1,4 @@
-const tasks = [_]*const fn (alloc: std.mem.Allocator, file: std.fs.File, part: u8) anyerror!u32{
+const tasks = [_]*const fn (alloc: std.mem.Allocator, file: std.fs.File, part: u8) anyerror!u64{
     @import("day01.zig").solve,
     @import("day02.zig").solve,
     @import("day03.zig").solve,

@@ -59,7 +59,7 @@ const part2 = @import("day07_2.zig");
 /// the result of multiplying each hand's bid with its rank (765 * 1 + 220 * 2 +
 /// 28 * 3 + 684 * 4 + 483 * 5). So the total winnings in this example are 6440.
 ///
-pub fn solve(alloc: std.mem.Allocator, file: std.fs.File, part: u8) !u32 {
+pub fn solve(alloc: std.mem.Allocator, file: std.fs.File, part: u8) !u64 {
     if (part == 2) return try part2.solve(alloc, file);
 
     var buffered = std.io.bufferedReader(file.reader());
