@@ -1,5 +1,5 @@
 const std = @import("std");
-const p = @import("parcom.zig");
+const p = @import("parcom");
 
 const log = std.log.scoped(.day08);
 
@@ -147,27 +147,27 @@ const Map = struct {
     }
 
     pub fn parse(self: *Map, alloc: std.mem.Allocator, reader: anytype) !bool {
-        const key = p.array(p.letterOrNumber(), 3);
-        const moves = p.arrayList(p.oneCharOf("LR"), &self.moves);
+        const key = p.letterOrNumber().repeatToArray(3);
+        const moves = p.oneCharOf("LR").repeatTo(&self.moves, .{}, std.ArrayList(u8).append);
         const node_line = p.tuple(.{ p.char('('), key, p.word(", "), key, p.char(')') });
-        const node = p.transform(Node, node_line, struct {
-            fn transformNode(line: @TypeOf(node_line).Type) anyerror!Node {
+        const node = node_line.transform(Node, {}, struct {
+            fn transformNode(_: void, line: @TypeOf(node_line).ResultType) anyerror!Node {
                 return .{ .left = line[1], .right = line[3] };
             }
         }.transformNode);
-        const graph_line = p.tuple(.{ key, p.word(" = "), node, p.opt(p.char('\n')) });
+        const graph_line = p.tuple(.{ key, p.word(" = "), node, p.char('\n').optional() });
         const graph_appender = struct {
-            fn addNode(map: *Map, line: @TypeOf(graph_line).Type) anyerror!void {
+            fn addNode(map: *Map, line: @TypeOf(graph_line).ResultType) anyerror!void {
                 if (line[0][2] == 'A') {
                     try map.paths.append(line[0]);
                 }
                 try map.graph.put(line[0], line[2]);
             }
         };
-        const graph = p.collect(Map, graph_line, self, graph_appender.addNode);
+        const graph = graph_line.repeatTo(self, .{}, graph_appender.addNode);
         const map_parser = p.tuple(.{ moves, p.word("\n\n"), graph });
 
-        return try p.parse(alloc, map_parser, reader) != null;
+        return try map_parser.parseFromReader(alloc, reader.any()) != null;
     }
 };
 

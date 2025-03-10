@@ -18,7 +18,7 @@ pub const std_options: std.Options = .{
     },
 };
 
-const Path = [std.fs.MAX_PATH_BYTES:0]u8;
+const Path = [std.fs.max_path_bytes:0]u8;
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};

@@ -1,0 +1,16 @@
+.{
+    .name = .adventofcode2023,
+    .version = "0.1.0",
+    .minimum_zig_version = "0.14.0",
+
+    .dependencies = .{
+        .parcom = .{
+            .url = "git+https://github.com/dokwork/parcom#b93b8fb14f489007f27d42f8254f12b7d57d07da",
+            .hash = "parcom-0.3.0-Hs8wfHFUAQBhhH-swYl1wrMLSh76uApvVzYBl56t90Ua",
+        },
+    },
+
+    .paths = .{"src"},
+
+    .fingerprint = 0xff6811319a2d5b21,
+}

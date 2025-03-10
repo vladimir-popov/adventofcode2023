@@ -112,7 +112,7 @@ fn binarySearch(
     defer stack.deinit();
     try stack.append(.{ min_hold_time, max_hold_time });
 
-    while (stack.popOrNull()) |tuple| {
+    while (stack.pop()) |tuple| {
         const min_hold = tuple[0];
         const max_hold = tuple[1];
         const middle = min_hold + @divTrunc(max_hold - min_hold, 2);

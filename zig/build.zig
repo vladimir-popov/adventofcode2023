@@ -4,11 +4,21 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const exe = b.addExecutable(.{
-        .name = "adventofcode",
+    const parcom = b.dependency("parcom", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const solutions = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
+    });
+    solutions.addImport("parcom", parcom.module("parcom"));
+
+    const exe = b.addExecutable(.{
+        .name = "adventofcode",
+        .root_module = solutions,
     });
 
     b.installArtifact(exe);
@@ -24,8 +34,8 @@ pub fn build(b: *std.Build) void {
     // Creates a step for unit testing. This only builds the test executable
     // but does not run it.
     const unit_tests = b.addTest(.{
-        .root_source_file = b.path("src/main.zig"),
-        .test_runner = b.path("src/test_runner.zig"),
+        .root_module = solutions,
+        .test_runner = .{ .path = b.path("src/test_runner.zig"), .mode = .simple },
         .target = target,
         .optimize = optimize,
     });

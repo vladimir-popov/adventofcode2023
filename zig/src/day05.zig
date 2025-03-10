@@ -170,7 +170,7 @@ const RangeMap = struct {
         return lr.source < rr.source;
     }
 
-    pub fn compareWithKey(_: void, key: u32, range: RangeMap) std.math.Order {
+    pub fn compareWithKey(key: u32, range: RangeMap) std.math.Order {
         if (key < range.source) return std.math.Order.lt;
         if (key >= (range.source + range.len)) return std.math.Order.gt;
         return std.math.Order.eq;
@@ -209,7 +209,7 @@ const Map = struct {
     }
 
     pub fn get(self: *const Map, key: u32) u32 {
-        const idx = std.sort.binarySearch(RangeMap, key, self.ranges.items, {}, RangeMap.compareWithKey);
+        const idx = std.sort.binarySearch(RangeMap, self.ranges.items, key,RangeMap.compareWithKey);
         if (idx) |i| return self.ranges.items[i].get(key) else return key;
     }
 };

@@ -78,6 +78,10 @@ const Hand = struct {
     };
     cards: [5]u8,
 
+    pub fn format(self: @This(), comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
+        try writer.print("{s}", .{self.cards});
+    }
+
     pub fn parse(cards: []const u8) !Hand {
         var hand = Hand{ .cards = undefined };
         std.mem.copyForwards(u8, &hand.cards, cards);
@@ -165,11 +169,12 @@ const Hand = struct {
             try Hand.parse("QQQJA"),
         };
         const expectation = [_]Hand{
-            try Hand.parse("32T3K"),
-            try Hand.parse("KTJJT"),
-            try Hand.parse("T55J5"),
-            try Hand.parse("QQQJA"),
-            try Hand.parse("KK677"),
+            try Hand.parse("32T3K"), // one pair - the weakest hand
+            try Hand.parse("KK677"), // two pairs - the second-weakest hand
+            // all four of a kind:
+            try Hand.parse("T55J5"), // rank 3
+            try Hand.parse("QQQJA"), // rank 4
+            try Hand.parse("KTJJT"), // rank 5
         };
 
         std.mem.sort(Hand, &hands, {}, Hand.lessThan);
